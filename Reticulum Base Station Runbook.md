@@ -52,8 +52,14 @@ A repeatable guide for adding a Reticulum node to a Project NOMAD box: a two-con
 
 ### Flashing the RNode
 
-- Option A: `pip install rns --upgrade` then `rnodeconf --autoinstall` from any computer.
-- Option B: browser-based Web Serial flasher (e.g. rmap.world/flasher) — lists Heltec LoRa32 v3/v4 explicitly.
+**Web flasher (recommended, no install):** open **https://rmap.world/flasher** in Chrome/Edge (Web Serial) — pick your board (Heltec LoRa32 v3/v4 are listed explicitly), pick the frequency/model for your region, plug the board in over USB, Connect, Flash. An alternative web flasher exists in Liam Cottle's tooling, linked from the MeshChat project. Firmware is fetched on demand and discarded after flashing; nothing installs on your computer.
+
+CLI alternative:
+
+- `pip install rns --upgrade` then `rnodeconf --autoinstall` from any computer.
+
+Flasher settings that matter:
+
 - Pick the board model **and the correct frequency variant** for your region.
 - Leave the device in default **Normal (host-controlled)** mode after flashing.
 - Sanity check: status LED blinks briefly every ~2 seconds; the onboard display shows device state.
@@ -236,6 +242,7 @@ RNS has interface modes for this (`roaming`, `border_roam`), but practically: wi
 
 ## Reference
 
+- RNode Web Flasher: https://rmap.world/flasher (browser-based, Web Serial; Heltec v3/v4 listed)
 - Reticulum: https://reticulum.network — manual, interfaces documentation (including interface discovery)
 - NomadNet: https://github.com/markqvist/NomadNet — image `ghcr.io/markqvist/nomadnet`
 - RNode Firmware / supported boards: https://github.com/markqvist/RNode_Firmware
