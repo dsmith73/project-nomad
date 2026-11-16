@@ -464,20 +464,17 @@ Every row is a real incident from the reference build (or a documented hazard fo
 
 ---
 
-## 9. Structured Node API (build it — it's yours)
+## 9. Structured Node API (optional, build later)
 
 Prerequisite: Sections 3–6 complete, node announcing. Then give the node a machine-readable face that also works from a browser.
 
-**Design:** a Micron page with a short shebang script (`/opt/project-nomad/storage/reticulum/nomadnet/storage/pages/api.mu`) that emits key-value lines. When a NomadNet page is fetched with `?um` appended, the browser gets a **JSON representation** of the page data instead of rendered Micron — that is the structured API, no extra software.
+**Design:** a Micron page with a short shebang script (`/opt/project-nomad/storage/reticulum/nomadnet/storage/pages/api.mu`) that emits key-value lines. One caveat before committing: verify against the NomadNet version in use how executable pages behave in your image, and whether NomadNet offers a machine-readable (non-rendered) fetch mode for page data — do not build tooling that depends on undocumented behavior; test both the rendered and raw fetch paths before writing any consumer.
 
-One caveat before committing to JSON-in-browser: relying on `?um` couples API consumers to NomadNet's UX-specific rendering conversion — the data shape follows the page's visual layout, not your schema, and its stability is outside your control. Micron is deliberately limited compared to full HTML/CSS/JS, so rich UIs are constrained regardless. For dashboards that outgrow it, the pragmatic alternative is a small Flask/FastAPI service on the host (reading the same `.reticulum` state) — more work, full control. For v1, `api.mu` is the right scope: zero dependencies, works in both NomadNet browsers and scripts. Don't over-anticipate failure modes — the on-box API is inherently private (it can't be targeted from the wider internet through LXMF mesh transports), so threat modeling starts from the LAN.
-
-**Starter page** — microns request a full status snapshot per hit; keep fields finite, e.g. transport uptime and identity hashes:
+Starter page — a read-only status snapshot per hit; keep fields finite:
 
 ```micron
 #!/usr/bin/env python3
 
-import os
 import RNS
 import time
 
@@ -493,29 +490,21 @@ print("^ `node_hash`:")
 print("`"+RNS.prettyhexrep(reticulum.identity.hash)+"`")
 ```
 
-Publishing rules (these caused a wasted debugging cycle in the reference build):
+Publishing rules:
 
-1. Save the page as the `reticulum` user so the container can serve it:
+1. Save the page so the container can serve it:
 
    ```bash
    sudo chown reticulum:reticulum /opt/project-nomad/storage/reticulum/nomadnet/storage/pages/api.mu
    ```
 
 2. Keep the shebang line `#!/usr/bin/env python3` as the **first line** of the file; the script prints Micron text to stdout, which NomadNet serves.
-3. Restrict the script's filesystem writes; the API should read state, not mutate it.
-4. Publish over the LAN only: expose `:8602` on the host LAN interface. If remote access is ever needed, put an authenticated reverse proxy in front — don't hole-punch.
-5. Auth for scripts: append a per-deployment token as a query parameter (`api.mu?t=<API_TOKEN>`), and check it in the script before emitting data. Log and rotate.
-6. Consume with:
+3. Restrict the script's filesystem access; the API should read state, not mutate it.
+4. Expose to the LAN only (`:8602` on the host LAN interface). If remote access is ever needed, put an authenticated reverse proxy in front — don't hole-punch.
+5. Auth for scripts: a per-deployment token passed as a query parameter (`api.mu?t=<API_TOKEN>`), checked in the script before emitting data; log access and rotate the token.
+6. Validate: opening the page in a browser returns formatted text; a Sideband/Ratspeak client can browse it over LoRa too.
 
-   ```bash
-   curl "http://<BOX_IP>:8602/page/api.mu?t=<API_TOKEN>&um"
-   ```
-
-   The `?um` flag returns the structured (JSON) form of the page's data instead of rendered text.
-
-Validation: `curl` returns parseable JSON with sane values; opening the page in a browser returns formatted text; a Sideband/Ratspeak client can browse the page over LoRa too.
-
-**Update cadence:** treat the API like a published contract — additive fields only, bump a `revision` field when changing semantics, and note changes in the deployment sheet.
+**Update cadence:** treat the API like a published contract — additive fields only, note changes in the deployment sheet.
 
 ---
 
@@ -587,7 +576,7 @@ For boxes that travel (RV/mobile deployments), plan a dedicated travel router (e
 
 ## 14. Deferred enhancements
 
-- Remote read-only API page from NomadNet over public carrier networks — parked pending credible assurance that NomadNet's page-serving stack and RNS transports provide sufficient protection for the attached host; revisit if upstream hardening lands or a fronting proxy design matures
+- Remote read-only API page from NomadNet over public carrier networks — parked pending a credible security review of NomadNet's page-serving stack and RNS transports; revisit if upstream hardening lands or a fronting proxy design matures
 - ZIM export of this SOP for offline NomadNet library distribution (pandoc → zim-wiki/zim-tools conversion path)
 - Meshtastic/MeshCore bridging (blocked on upstream interop maturing)
 - Dynamic `.mu` status pages (rnstatus, interface health) as node pages
@@ -615,4 +604,3 @@ For boxes that travel (RV/mobile deployments), plan a dedicated travel router (e
 - Reticulum MeshChat: https://github.com/liamcottle/reticulum-meshchat — image `ghcr.io/liamcottle/reticulum-meshchat`
 - Sideband (field client): LAN connects via TCP to `<BOX_IP>:8602`; over the air pairs with its own RNode via BLE (unsigned.io RNode Bluetooth guide)
 - RNode CLI config utility (incl. `-w` WiFi, `-b`/`-B`/`-p` Bluetooth controls): https://unsigned.io/software/RNode_Configuration_Utility.html
-- Local background in this workspace: `Ret Messing Around.txt` (architecture/decision log); `rf1.mu` (api.mu ancestor — same script with `api_url = http://192.168.4.209:8602/page/` hardcoded)
